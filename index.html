@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Striker 4.0</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: #2c2c2c;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #00ff88;
+            margin-bottom: 20px;
+        }
+        h2 {
+            color: #00ff88;
+            margin-top: 20px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #3c3c3c;
+            color: #ffffff;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #00ff88;
+            color: #1e1e1e;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background-color: #00cc66;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #3c3c3c;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #00ff88;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #ffffff;
+        }
+        .chat-container {
+            margin-top: 20px;
+        }
+        .chat-box {
+            height: 300px;
+            overflow-y: scroll;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #3c3c3c;
+        }
+        .chat-message {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .chat-message.user {
+            background-color: #444;
+            text-align: right;
+        }
+        .chat-message.ai {
+            background-color: #555;
+            text-align: left;
+        }
+        .chat-message strong {
+            color: #00ff88;
+        }
+        select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #444;
+            border-radius: 5px;
+            background-color: #3c3c3c;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Web Striker 4.0</h1>
+
+        <!-- Model Selection Dropdown -->
+        <select id="modelSelect" onchange="selectModel()">
+            <option value="Gemma2 💎">Gemma2 💎</option>
+            <option value="Mixtral 🚀">Mixtral 🚀</option>
+        </select>
+
+        <!-- Web Scraper Section -->
+        <input type="text" id="url" placeholder="Enter URL to scrape">
+        <button onclick="scrape()">Scrape and Summarize</button>
+
+        <div class="result">
+            <h3>Scraped Text:</h3>
+            <pre id="scrapedText"></pre>
+            <h3>Summary:</h3>
+            <pre id="summary"></pre>
+        </div>
+
+        <!-- Chatbot Section -->
+        <div class="chat-container">
+            <h2>Chatbot</h2>
+            <div class="chat-box" id="chatBox"></div>
+            <input type="text" id="chatInput" placeholder="Ask me anything...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        async function scrape() {
+            const url = document.getElementById('url').value;
+            const scrapedTextDiv = document.getElementById('scrapedText');
+            const summaryDiv = document.getElementById('summary');
+
+            if (!url) {
+                scrapedTextDiv.innerHTML = "Please enter a valid URL.";
+                summaryDiv.innerHTML = "";
+                return;
+            }
+
+            scrapedTextDiv.innerHTML = "Scraping...";
+            summaryDiv.innerHTML = "Summarizing...";
+
+            const response = await fetch('/scrape', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ url: url })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                scrapedTextDiv.innerHTML = `Error: ${data.error}`;
+                summaryDiv.innerHTML = "";
+            } else {
+                scrapedTextDiv.innerHTML = data.scraped_text;
+                summaryDiv.innerHTML = data.summary;
+            }
+        }
+
+        async function sendMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const chatBox = document.getElementById('chatBox');
+            const message = chatInput.value;
+
+            if (!message) return;
+
+            // Add user message to chat box
+            chatBox.innerHTML += `<div class="chat-message user"><strong>You:</strong> ${message}</div>`;
+            chatInput.value = "";
+
+            // Get the context (scraped text and summary)
+            const scrapedText = document.getElementById('scrapedText').innerText;
+            const summary = document.getElementById('summary').innerText;
+            const context = `Scraped Text: ${scrapedText}\n\nSummary: ${summary}`;
+
+            // Send message to the chatbot
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message: message, context: context })
+            });
+
+            const data = await response.json();
+
+            // Add AI response to chat box
+            chatBox.innerHTML += `<div class="chat-message ai"><strong>AI:</strong> ${data.response}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function selectModel() {
+            const selectedModel = document.getElementById('modelSelect').value;
+            const response = await fetch('/select_model', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ model: selectedModel })
+            });
+            const data = await response.json();
+            alert(data.message);
+        }
+    </script>
+</body>
+</html>
